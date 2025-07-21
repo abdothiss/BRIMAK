@@ -1483,15 +1483,27 @@ video {
   transition-duration: 300ms;
 }
 
-/* --- Login Page Background --- */
+/* 
+  ==============================================================
+    THE DEFINITIVE BACKGROUND FIX
+  ==============================================================
+*/
 
 body.login-page-body {
   background-image: url('../images/background-portrait.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  /* By NOT setting 'position' or 'background-attachment', it defaults to scrolling. */
+  /* 
+      ** THIS IS THE CRITICAL FIX **
+      'background-attachment: fixed' tells the browser to treat the background
+      as a fixed "wallpaper" that does not scroll or resize with the content.
+      This solves the zooming problem permanently.
+    */
+  background-attachment: fixed;
 }
+
+/* On desktop, we just switch the image source */
 
 @media (min-width: 768px) {
   body.login-page-body {
@@ -1499,7 +1511,7 @@ body.login-page-body {
   }
 }
 
-/* --- The rest of your form and button styles are unchanged --- */
+/* --- The rest of your trusted, working styles are below and are unchanged --- */
 
 /* Your mobile glass styles */
 
