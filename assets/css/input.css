@@ -8,6 +8,7 @@ body.login-page-body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    /* By NOT setting 'position' or 'background-attachment', it defaults to scrolling. */
 }
 @media (min-width: 768px) {
     body.login-page-body {
@@ -15,70 +16,21 @@ body.login-page-body {
     }
 }
 
-/* 
-  ==============================================================
-    YOUR CUSTOM MOBILE STYLES (Glassmorphism)
-  ==============================================================
-*/
+/* --- The rest of your form and button styles are unchanged --- */
+/* Your mobile glass styles */
 @media (max-width: 767px) {
-    .glass-form {
-        background-color: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
-    }
-    .glass-input {
-        background-color: rgba(233, 221, 221, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-    }
+    .glass-form { background-color: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 25px rgba(255, 255, 255, 0.15); }
+    .glass-input { background-color: rgba(233, 221, 221, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; }
     .glass-input::placeholder { color: rgba(255, 255, 255, 0.7); }
-    .glass-input:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
-    }
+    .glass-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
 }
-
-/* 
-  ==============================================================
-    YOUR CUSTOM DESKTOP STYLES
-  ==============================================================
-*/
+/* Your desktop form styles */
 @media (min-width: 768px) {
-    .desktop-form {
-        background-color: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
-    }
-    .desktop-input {
-        background-color: rgba(233, 221, 221, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white; /* Text the user types will be white */
-    }
+    .desktop-form { background-color: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 25px rgba(255, 255, 255, 0.15); }
+    .desktop-input { background-color: rgba(233, 221, 221, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; }
     .desktop-input::placeholder { color: rgba(255, 255, 255, 0.7); }
-    .desktop-input:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
-    }
+    .desktop-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
 }
-
-/* 
-  --- Your custom Red Gradient Button Style ---
-*/
-.btn-gradient-red {
-    background-image: linear-gradient(to right, #750202, #ff3434ab);
-    border: none;
-    transition: all 0.3s ease; /* This makes the hover effect smooth */
-}
-
-/* 
-  ** THIS IS THE NEW HOVER EFFECT **
-  It adds a shadow and slightly lifts the button.
-*/
-.btn-gradient-red:hover {
-    box-shadow: 0 4px 15px 0 rgba(178, 34, 34, 0.6);
-    transform: translateY(-2px);
-}
+/* Your button styles */
+.btn-gradient-red { background-image: linear-gradient(to right, #750202, #ff3434ab); border: none; transition: all 0.3s ease; }
+.btn-gradient-red:hover { box-shadow: 0 4px 15px 0 rgba(178, 34, 34, 0.6); transform: translateY(-2px); }

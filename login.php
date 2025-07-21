@@ -61,6 +61,10 @@ unset($_SESSION['error']);
         </div>
     </div>
     
+    <?php
+    // We now include the main footer file here
+    include 'includes/footer.php';
+    ?>
     <script>
         // This universal script is correct and remains unchanged.
         document.querySelectorAll('.password-toggle').forEach(btn => { /* ... */ });
