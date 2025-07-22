@@ -1,4 +1,6 @@
 <?php
+// actions/profile_action.php (Definitive Version)
+
 require_once '../includes/functions.php';
 require_login();
 
@@ -9,6 +11,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $user = get_user();
 $action = $_POST['action'] ?? null;
+
+// --- NEW ACTION: CHANGE FULL NAME ---
+if ($action === 'change_name') {
+    $new_name = trim($_POST['new_name'] ?? '');
+
+    if (empty($new_name)) {
+        $_SESSION['profile_error'] = 'Full name cannot be empty.';
+    } else {
+        // Update the name in the database
+        $update_stmt = $conn->prepare("UPDATE users SET name = ? WHERE id = ?");
+        $update_stmt->bind_param("si", $new_name, $user['id']);
+        $update_stmt->execute();
+        
+        // IMPORTANT: Update the session so the change is reflected immediately
+        $_SESSION['user']['name'] = $new_name;
+        $_SESSION['profile_success'] = 'Full name successfully updated!';
+    }
+}
 
 // --- ACTION: CHANGE USERNAME ---
 if ($action === 'change_username') {
@@ -28,8 +48,6 @@ if ($action === 'change_username') {
             $update_stmt = $conn->prepare("UPDATE users SET username = ? WHERE id = ?");
             $update_stmt->bind_param("si", $new_username, $user['id']);
             $update_stmt->execute();
-            
-            // IMPORTANT: Update the session so the change is reflected immediately
             $_SESSION['user']['username'] = $new_username;
             $_SESSION['profile_success'] = 'Username successfully updated!';
         }
@@ -50,9 +68,7 @@ if ($action === 'change_password') {
         $stmt->execute();
         $db_password_hash = $stmt->get_result()->fetch_assoc()['password'];
         
-        // Verify the current password is correct
         if (password_verify($current_password, $db_password_hash)) {
-            // Hash the new password and update the database
             $new_password_hash = password_hash($new_password, PASSWORD_DEFAULT);
             $update_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
             $update_stmt->bind_param("si", $new_password_hash, $user['id']);
@@ -64,6 +80,6 @@ if ($action === 'change_password') {
     }
 }
 
-// Redirect back to the dashboard
+// Redirect back to the profile page to see the changes
 header('Location: ../index.php?view=profile');
 exit();

@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     // ==========================================================
     //  SECTION 1: Slide-Out Menu Logic
-    //  This is the only code that should control the menu.
     // ==========================================================
     const menuBtn = document.getElementById('menu-btn');
     const menuPanel = document.getElementById('menu-panel');
@@ -16,14 +15,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // These listeners ONLY run on a user click. They do not run automatically.
+    // These listeners will now work because no other code is crashing before them.
     menuBtn?.addEventListener('click', toggleMenu);
     menuOverlay?.addEventListener('click', toggleMenu);
-
     
     // ==========================================================
-    //  SECTION 2: Logic for Modals (Pop-ups)
-    //  This code is confirmed to be working.
+    //  SECTION 2: Logic for Modals That Actually Exist
     // ==========================================================
 
     // --- Admin User Management Modals ---
@@ -66,4 +63,14 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.open-decline-modal').forEach(btn => { btn.addEventListener('click', e => { const commandId = e.currentTarget.dataset.commandId; const commandUid = e.currentTarget.dataset.commandUid; title.textContent = `Decline Command ${commandUid}`; commandIdInput.value = commandId; declineModal.classList.remove('hidden'); }); });
         document.querySelectorAll('.close-decline-modal').forEach(btn => { btn.addEventListener('click', () => declineModal.classList.add('hidden')); });
     }
+
+    const profileSettingsBtn = document.getElementById('profile-settings-btn');
+const profileSettingsForms = document.getElementById('profile-settings-forms');
+
+if (profileSettingsBtn && profileSettingsForms) {
+    profileSettingsBtn.addEventListener('click', function() {
+        profileSettingsForms.classList.toggle('hidden');
+    });
+}
 });
+

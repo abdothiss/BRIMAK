@@ -60,7 +60,7 @@ unset($_SESSION['error']);
             <!-- This side is intentionally left blank -->
         </div>
     </div>
-    
+    <div class="h-20 md:h-32"></div>
     <?php
     // We now include the main footer file here
     include 'includes/footer.php';

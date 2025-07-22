@@ -22,33 +22,39 @@ $user = get_user();
         </header>
 
         <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
-        <div id="menu-panel" class="fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-40 transform -translate-x-full transition-transform duration-300 flex flex-col ">
-          <div class="p-4 border-b"><h2 class="text-xl font-bold text-brick-red">Menu</h2></div>
+        <div id="menu-panel" class="fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-40 transform -translate-x-full transition-transform duration-300 flex flex-col rounded-r-2xl overflow-hidden">
+          <div class="p-6 flex items-center space-x-4 bg-gradient-red-header">
+            <div class="bg-white/20 p-1 rounded-full flex-shrink-0"><?= icon_user('w-12 h-12 text-white') ?></div>
+            <div><p class="font-bold text-white text-lg"><?= e($user['name']) ?></p><p class="text-sm text-white/80"><?= e($user['role']) ?></p></div>
+          </div>
+          
           <nav class="flex-grow p-4 space-y-2">
-            <a href="index.php" class="flex items-center space-x-3 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                <?= icon_dashboard('w-5 h-5 text-gray-500') ?> <span>Dashboard</span>
+            <!-- ** THIS IS THE VISUAL FIX: "cursor-pointer" has been added to all <a> tags ** -->
+                        <a href="index.php?view=profile" class="flex items-center justify-between p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200 cursor-pointer">
+                <div class="flex items-center space-x-4"><?= icon_user('w-5 h-5 text-gray-500') ?><span>Manage Profile</span></div>
+            <a href="index.php" class="flex items-center justify-between p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200 cursor-pointer">
+                <div class="flex items-center space-x-4"><?= icon_dashboard('w-5 h-5 text-gray-500') ?><span>Dashboard</span></div>
             </a>
-            <a href="index.php?view=profile" class="flex items-center space-x-3 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                <?= icon_user('w-5 h-5 text-gray-500') ?> <span>Manage Profile</span>
+
             </a>
             <?php if ($user['role'] === 'Admin'): ?>
-                <a href="index.php?view=users" class="flex items-center space-x-3 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                    <?= icon_users('w-5 h-5 text-gray-500') ?> <span>User Management</span>
+                <a href="index.php?view=users" class="flex items-center justify-between p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200 cursor-pointer">
+                    <div class="flex items-center space-x-4"><?= icon_users('w-5 h-5 text-gray-500') ?><span>User Management</span></div>
                 </a>
             <?php endif; ?>
             <?php if (in_array($user['role'], ['Admin', 'Commercial'])): ?>
-                <a href="index.php?view=history" class="flex items-center space-x-3 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                    <?= icon_history('w-5 h-5 text-gray-500') ?> <span>Command History</span>
+                <a href="index.php?view=history" class="flex items-center justify-between p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200 cursor-pointer">
+                    <div class="flex items-center space-x-4"><?= icon_history('w-5 h-5 text-gray-500') ?><span>Command History</span></div>
                 </a>
             <?php endif; ?>
           </nav>
 
-          <div class="p-4 border-t bg-gray-50">
-            <a href="logout.php" class="flex items-center space-x-3 p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                <?= icon_logout('w-5 h-5 text-gray-500') ?> <span>Logout</span>
+          <div class="p-4 border-t bg-gray-50 rounded-br-2xl">
+            <a href="logout.php" class="flex items-center justify-between p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200 cursor-pointer">
+                <div class="flex items-center space-x-4"><?= icon_logout('w-5 h-5 text-gray-500') ?><span>Logout</span></div>
             </a>
           </div>
         </div>
 
-        <main class="flex-grow">
+        <main class="flex-grow pb-64">
             <div class="container mx-auto p-4 sm:p-6">
