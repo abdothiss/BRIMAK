@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     // ==========================================================
-    //  SECTION 1: Slide-Out Menu Logic
+    //  SECTION 1: Slide-Out Menu Logic (Works on all pages)
     // ==========================================================
     const menuBtn = document.getElementById('menu-btn');
     const menuPanel = document.getElementById('menu-panel');
@@ -32,14 +32,15 @@ document.addEventListener('DOMContentLoaded', function () {
     openUsernameBtn?.addEventListener('click', () => usernameModal?.classList.remove('hidden'));
     openPasswordBtn?.addEventListener('click', () => passwordModal?.classList.remove('hidden'));
 
-    // A single function to close ALL profile modals
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+    // This query selector is more specific to avoid conflicts.
+    document.querySelectorAll('.modal .close-modal-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             nameModal?.classList.add('hidden');
             usernameModal?.classList.add('hidden');
             passwordModal?.classList.add('hidden');
         });
     });
+
     // ==========================================================
     //  SECTION 2: Logic for Modals That Actually Exist
     // ==========================================================

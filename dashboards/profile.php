@@ -37,7 +37,7 @@ unset($_SESSION['profile_error'], $_SESSION['profile_success']);
                 <div class="flex-grow"><p class="text-sm text-gray-500">Username</p><p class="font-semibold text-gray-800">@<?= e($user['username']) ?></p></div>
                 <span class="text-gray-400"><?= icon_chevron_right('w-5 h-5') ?></span>
             </button>
-            <!-- ** NEW: Settings Item ** -->
+            <!-- Settings Item -->
             <button id="open-password-modal-btn" class="w-full flex justify-between items-center py-3 text-left">
                 <p class="font-semibold text-gray-800">Settings</p>
                 <span class="text-gray-400"><?= icon_chevron_right('w-5 h-5') ?></span>
@@ -50,32 +50,9 @@ unset($_SESSION['profile_error'], $_SESSION['profile_success']);
         </div>
     </div>
 
-    <!-- The hidden modals are unchanged and correct -->
-    <div id="change-name-modal" class="modal ..."></div>
-    <div id="change-username-modal" class="modal ..."></div>
-    
-    <!-- ** NEW: The Settings Modal ** -->
-    <div id="change-password-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
-            <div class="p-4 border-b flex justify-between items-center"><h2 class="text-xl font-bold">Settings</h2><button class="close-modal-btn text-gray-500">×</button></div>
-            <!-- Change Password Form -->
-            <form action="actions/profile_action.php" method="POST" class="p-6 space-y-4 border-b">
-                <h3 class="font-semibold">Change Password</h3>
-                <input type="hidden" name="action" value="change_password">
-                <div><label class="block text-sm font-medium">Current Password</label><input type="password" name="current_password" required class="mt-1 block w-full border p-2 rounded-md"></div>
-                <div><label class="block text-sm font-medium">New Password</label><input type="password" name="new_password" required class="mt-1 block w-full border p-2 rounded-md"></div>
-                <div class="flex justify-end"><button type="submit" class="px-4 py-2 bg-brick-red text-white rounded-md text-sm">Update Password</button></div>
-            </form>
-            <!-- Language & Dark Mode Placeholders -->
-            <div class="p-6 space-y-4">
-                 <h3 class="font-semibold">Appearance</h3>
-                 <div class="flex justify-between items-center"><label class="block text-sm font-medium">Language</label><span class="text-sm text-gray-500">English (coming soon)</span></div>
-                 <div class="flex justify-between items-center"><label class="block text-sm font-medium">Dark Mode</label><span class="text-sm text-gray-500">Off (coming soon)</span></div>
-            </div>
-            <div class="p-4 bg-gray-50 flex justify-end">
-                <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 rounded-md">Close</button>
-            </div>
-        </div>
-    </div>
+    <!-- The full, unabbreviated hidden modals -->
+    <div id="change-name-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden"><div class="bg-white rounded-lg shadow-xl w-full max-w-sm"><div class="p-4 border-b flex justify-between items-center"><h2 class="text-xl font-bold">Change Full Name</h2><button class="close-modal-btn text-gray-500">×</button></div><form action="actions/profile_action.php" method="POST" class="p-6 space-y-4"><input type="hidden" name="action" value="change_name"><div><label class="block text-sm font-medium">New Full Name</label><input type="text" name="new_name" required class="mt-1 block w-full border p-2 rounded-md" value="<?= e($user['name']) ?>"></div><div class="flex justify-end space-x-3"><button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-brick-red text-white rounded-md">Save Name</button></div></form></div></div>
+    <div id="change-username-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden"><div class="bg-white rounded-lg shadow-xl w-full max-w-sm"><div class="p-4 border-b flex justify-between items-center"><h2 class="text-xl font-bold">Change Username</h2><button class="close-modal-btn text-gray-500">×</button></div><form action="actions/profile_action.php" method="POST" class="p-6 space-y-4"><input type="hidden" name="action" value="change_username"><div><label class="block text-sm font-medium text-gray-500">Current Username</label><input type="text" value="<?= e($user['username']) ?>" readonly class="mt-1 block w-full border p-2 rounded-md bg-gray-100"></div><div><label class="block text-sm font-medium">New Username</label><input type="text" name="new_username" required class="mt-1 block w-full border p-2 rounded-md"></div><div class="flex justify-end space-x-3"><button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-brick-red text-white rounded-md">Save Username</button></div></form></div></div>
+    <div id="change-password-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden"><div class="bg-white rounded-lg shadow-xl w-full max-w-sm"><div class="p-4 border-b flex justify-between items-center"><h2 class="text-xl font-bold">Settings</h2><button class="close-modal-btn text-gray-500">×</button></div><form action="actions/profile_action.php" method="POST" class="p-6 space-y-4 border-b"><h3 class="font-semibold">Change Password</h3><input type="hidden" name="action" value="change_password"><div><label class="block text-sm font-medium">Current Password</label><input type="password" name="current_password" required class="mt-1 block w-full border p-2 rounded-md"></div><div><label class="block text-sm font-medium">New Password</label><input type="password" name="new_password" required class="mt-1 block w-full border p-2 rounded-md"></div><div class="flex justify-end"><button type="submit" class="px-4 py-2 bg-brick-red text-white rounded-md text-sm">Update Password</button></div></form><div class="p-6 space-y-4"><h3 class="font-semibold">Appearance</h3><div class="flex justify-between items-center"><label class="block text-sm font-medium">Language</label><span class="text-sm text-gray-500">English (coming soon)</span></div><div class="flex justify-between items-center"><label class="block text-sm font-medium">Dark Mode</label><span class="text-sm text-gray-500">Off (coming soon)</span></div></div><div class="p-4 bg-gray-50 flex justify-end"><button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 rounded-md">Close</button></div></div></div>
 </body>
 </html>
