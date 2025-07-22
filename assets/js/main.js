@@ -14,11 +14,32 @@ document.addEventListener('DOMContentLoaded', function () {
             body.classList.toggle('overflow-hidden');
         }
     }
-
-    // These listeners will now work because no other code is crashing before them.
     menuBtn?.addEventListener('click', toggleMenu);
     menuOverlay?.addEventListener('click', toggleMenu);
+
+    // ==========================================================
+    //  SECTION 2: Profile Page Modal Logic (NEW & CORRECT)
+    // ==========================================================
+    const openNameBtn = document.getElementById('open-name-modal-btn');
+    const openUsernameBtn = document.getElementById('open-username-modal-btn');
+    const openPasswordBtn = document.getElementById('open-password-modal-btn');
     
+    const nameModal = document.getElementById('change-name-modal');
+    const usernameModal = document.getElementById('change-username-modal');
+    const passwordModal = document.getElementById('change-password-modal');
+
+    openNameBtn?.addEventListener('click', () => nameModal?.classList.remove('hidden'));
+    openUsernameBtn?.addEventListener('click', () => usernameModal?.classList.remove('hidden'));
+    openPasswordBtn?.addEventListener('click', () => passwordModal?.classList.remove('hidden'));
+
+    // A single function to close ALL profile modals
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            nameModal?.classList.add('hidden');
+            usernameModal?.classList.add('hidden');
+            passwordModal?.classList.add('hidden');
+        });
+    });
     // ==========================================================
     //  SECTION 2: Logic for Modals That Actually Exist
     // ==========================================================

@@ -39,6 +39,12 @@ body.login-page-body {
     .glass-input::placeholder { color: rgba(255, 255, 255, 0.7); }
     .glass-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
     body.login-page-body { background-attachment: fixed; } 
+    .bg-gradient-red-header {
+    background-image: url('../images/menu-pic.png');
+    background-size: cover;          /* Makes the image cover the element */
+    background-position: center;     /* Centers the image */
+    background-repeat: no-repeat;    /* Prevents tiling */
+}
 }
 
 /* Your desktop form styles */
@@ -47,7 +53,12 @@ body.login-page-body {
     .desktop-input { background-color: rgba(233, 221, 221, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; }
     .desktop-input::placeholder { color: rgba(255, 255, 255, 0.7); }
     .desktop-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
-    
+    .bg-gradient-red-header {
+    background-image: url('../images/menu-pic-desktop.jpg');
+    background-size: cover;          /* Makes the image cover the element */
+    background-position: center;     /* Centers the image */
+    background-repeat: no-repeat;    /* Prevents tiling */
+}
 }
 
 /* Your button styles */
@@ -59,19 +70,19 @@ body.login-page-body {
     NEW STYLE FOR THE MENU'S PROFILE HEADER
   ==============================================================
 */
-.bg-gradient-red-header {
-    background-image: url('../images/menu-pic.png');
-    background-size: cover;          /* Makes the image cover the element */
-    background-position: center;     /* Centers the image */
-    background-repeat: no-repeat;    /* Prevents tiling */
-}
+
 
 /* 
   ==============================================================
     NEW STYLE FOR THE MENU'S PROFILE HEADER
   ==============================================================
 */
-.bg-gradient-red-header {
-    /* A vibrant, diagonal gradient using your theme's red */
-    background-image: linear-gradient(135deg, #D32F2F, #B22222);
+
+
+.text-logout-red {
+    color: #DC2626; /* This is Tailwind's red-600 */
 }
+.text-logout-red:hover {
+    color: #B91C1C; /* This is Tailwind's red-800 */
+}
+
