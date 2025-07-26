@@ -6,6 +6,36 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once 'db.php';
 
+if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
+    // We have a cookie, but no session. Let's try to log the user in.
+    list($selector, $validator) = explode(':', $_COOKIE['remember_me'], 2);
+
+    if ($selector && $validator) {
+        // Find the token in the database
+        $stmt = $conn->prepare("SELECT * FROM auth_tokens WHERE selector = ? AND expires >= NOW()");
+        $stmt->bind_param("s", $selector);
+        $stmt->execute();
+        $token = $stmt->get_result()->fetch_assoc();
+
+        // If a valid
+        if ($token) {
+            if (password_verify($validator, $token['hashed_validator'])) {
+                
+                $user_stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+                $user_stmt->bind_param("i", $token['user_id']);
+                $user_stmt->execute();
+                $user = $user_stmt->get_result()->fetch_assoc();
+
+                if ($user) {
+                    
+                    unset($user['password']); 
+                    $_SESSION['user'] = $user;
+                }
+            }
+        }
+    }
+}
+
 // --- CORE APP FUNCTIONS ---
 
 function require_login() {
@@ -29,8 +59,7 @@ function create_remember_me_token($conn, $user_id) {
     $stmt = $conn->prepare("INSERT INTO auth_tokens (selector, hashed_validator, user_id, expires) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("ssis", $selector, $hashed_validator, $user_id, $expires->format('Y-m-d H:i:s'));
     $stmt->execute();
-
-    setcookie('remember_me', $selector . ':' . $validator, time() + 86400 * 30, '/');
+    setcookie('remember_me', $selector . ':' . $validator, time() + 86400 * 90, '/'); // Cookie lasts 90 days
 }
 
 
@@ -41,7 +70,6 @@ const WORKFLOWS = [
 ];
 const ALL_ROLES = ['Admin', 'Commercial', 'Chef', 'Producer', 'Dryer', 'Cooker', 'Presser', 'Packer'];
 const ALL_STATUSES = ['PendingApproval', 'InProgress', 'Paused', 'Completed', 'Declined', 'Archived'];
-
 // --- UNIVERSAL HELPER FUNCTIONS ---
 function e($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
@@ -111,10 +139,17 @@ function icon_arrow_left($class = 'w-6 h-6') {
 }
 
 function icon_settings($class = 'w-6 h-6') {
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
 }
 
 function icon_chevron_right($class = 'w-6 h-6') {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><polyline points="9 18 15 12 9 6"></polyline></svg>';
 }
 
+function icon_trash($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+}
+
+function icon_search($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+}

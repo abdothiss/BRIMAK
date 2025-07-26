@@ -1,73 +1,107 @@
 <?php
+// dashboards/commercial.php (Definitive Version)
 require_once 'includes/template_parts.php';
 $user = get_user();
 
-// 1. Live Commands (with filters)
-$filter_status = $_GET['filter'] ?? 'All';
-$sql_where = ($filter_status !== 'All' && in_array($filter_status, ALL_STATUSES)) ? "WHERE c.status = '" . $conn->real_escape_string($filter_status) . "'" : "";
-$commands_sql = "SELECT c.*, (SELECT COUNT(*) FROM command_history ch WHERE ch.command_id = c.id) as history_count FROM commands c $sql_where ORDER BY c.created_at DESC";
-$my_commands = $conn->query($commands_sql)->fetch_all(MYSQLI_ASSOC);
-
-// 2. Command History
-$history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Completed', 'Declined') ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+// Get the current view from the URL, default to the main dashboard
+$current_view = $_GET['view'] ?? 'dashboard';
 ?>
 
 <div class="space-y-6">
-    <div class="flex justify-between items-center">
-        <h2 class="text-3xl font-bold text-gray-800">Commercial Dashboard</h2>
-        <button id="open-create-modal-btn" class="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-brick-red text-white font-semibold rounded-lg shadow-md hover:bg-red-800 transition-colors">
-            <?= icon_plus('w-6 h-6') ?>
-            <span>Create New Command</span>
-        </button>
-    </div>
-    
-    <!-- TABS -->
-    <div class="border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="#" id="tab-live" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-brick-red text-brick-red">Live Commands</a>
-            <a href="#" id="tab-history" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500">Command History</a>
-        </nav>
-    </div>
 
-    <!-- Live Command List -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <?php if (count($my_commands) > 0): ?>
-            <?php foreach ($my_commands as $command):
-                $actions_html = '';
-                if ($command['status'] === 'Declined') {
-                    // Note the data-command attribute. JS will use this.
-                    $actions_html .= '<button class="edit-command-btn flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200" data-command=\''.json_encode($command).'\'>
-                                        '.icon_edit('w-4 h-4').'<span>Modify & Resend</span>
-                                      </button>';
-                }
-                
-                if ($command['status'] === 'Completed' || $command['status'] === 'Declined') {
-                    $actions_html .= '<form action="actions/command_action.php" method="POST" class="inline-block" title="Remove from live view">
-                                        <input type="hidden" name="command_id" value="'.e($command['id']).'">
-                                        <button type="submit" name="action" value="archive" class="p-2 text-gray-400 hover:text-gray-700">
-                                            '.icon_x('w-5 h-5').'
-                                        </button>
-                                      </form>';
-                }
-                echo render_command_card($command, $user, $actions_html);
-            endforeach; ?>
-        <?php else: ?>
-            <p class="text-gray-500 col-span-full text-center py-10">No commands match the current filter.</p>
-        <?php endif; ?>
-    </div>
-</div>
-             <!-- History Content -->
+    <?php if ($current_view === 'history'): ?>
+        
+        <!-- ================== NEW, REDESIGNED COMMAND HISTORY VIEW ================== -->
+        <?php
+        $search_term = $_GET['search'] ?? '';
+        $history_sql = "SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived')";
+        if (!empty($search_term)) {
+            $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
+            $history_sql .= " AND (command_uid LIKE '$safe_search' OR client_name LIKE '$safe_search' OR client_phone LIKE '$safe_search')";
+        }
+        $history_sql .= " ORDER BY created_at DESC";
+        $history_commands = $conn->query($history_sql)->fetch_all(MYSQLI_ASSOC);
+        ?>
+        <h2 class="text-3xl font-extrabold text-gray-800">Command History</h2>
+        
+        <!-- New Search Bar -->
+        <div class="bg-white p-4 rounded-lg shadow-sm my-6">
+            <form action="index.php" method="GET" class="search-container">
+                <input type="hidden" name="view" value="history">
+                <input type="text" name="search" class="search-input" placeholder="Search by ID, Client Name, or Phone..." value="<?= e($search_term) ?>">
+                <button type="submit" class="search-button">
+                    <?= icon_search('w-5 h-5') ?>
+                </button>
+            </form>
+            <?php // Note: The "Delete All" button does NOT appear for Commercial, only for Admin ?>
+        </div>
 
-<div id="content-history" class="tab-content hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <?php if (count($history_commands) > 0): ?>
-                <?php foreach ($history_commands as $command): echo render_command_card($command, $user, ''); endforeach; ?>
+        <!-- History Drawer List -->
+        <div class="space-y-2">
+            <?php if(count($history_commands) > 0): ?>
+                <?php foreach ($history_commands as $command):
+                    // Logic to determine the correct display status
+                    $status_text = $command['status'];
+                    if ($status_text === 'Archived') {
+                        $last_real_status_query = $conn->query("SELECT step_name FROM command_history WHERE command_id = " . (int)$command['id'] . " ORDER BY completed_at DESC LIMIT 1");
+                        $status_text = ($last_real_status_query->num_rows > 0) ? 'Completed' : 'Declined';
+                    }
+                    echo render_history_drawer($command, $user, $status_text);
+                endforeach; ?>
             <?php else: ?>
-                <p class="text-gray-500 col-span-full text-center py-10">No command history.</p>
+                <p class="text-center py-10 bg-white rounded-lg shadow-sm">No command history found.</p>
             <?php endif; ?>
         </div>
-    </div>
+
+    <?php else: // This is the default 'dashboard' view ?>
+
+        <!-- ================== LIVE COMMANDS VIEW ================== -->
+        <?php
+        $filter_status = $_GET['filter_status'] ?? 'All';
+        // Build the SQL WHERE clause based on the filter, ensuring it doesn't show archived commands
+        $where_conditions = ["c.status != 'Archived'"];
+        if ($filter_status !== 'All' && in_array($filter_status, ALL_STATUSES)) {
+            $where_conditions[] = "c.status = '" . $conn->real_escape_string($filter_status) . "'";
+        }
+        $sql_where = "WHERE " . implode(' AND ', $where_conditions);
+        $commands_sql = "SELECT c.*, (SELECT COUNT(*) FROM command_history ch WHERE ch.command_id = c.id) as history_count FROM commands c $sql_where ORDER BY c.created_at DESC";
+        $my_commands = $conn->query($commands_sql)->fetch_all(MYSQLI_ASSOC);
+        ?>
+        <div class="flex justify-between items-center">
+            <h2 class="text-3xl font-bold text-gray-800">Live Commands</h2>
+            <button id="open-create-modal-btn" class="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-brick-red text-white font-semibold rounded-lg shadow-md hover:bg-red-800 transition-colors">
+                <?= icon_plus('w-6 h-6') ?> <span>Create New Command</span>
+            </button>
+        </div>
+        <div class="flex flex-wrap gap-2 pt-4">
+            <?php
+            $statuses_to_show = array_merge(['All'], ALL_STATUSES);
+            foreach ($statuses_to_show as $status):
+                if ($status === 'Archived') continue;
+                $is_active = ($filter_status === $status);
+                $bg_color = $is_active ? 'bg-brick-red text-white' : 'bg-white text-gray-700 hover:bg-gray-200 border';
+                $link = "index.php?view=dashboard&filter_status=" . e($status);
+            ?>
+                <a href="<?= $link ?>" class="px-3 py-1 text-sm font-medium rounded-full shadow-sm <?= $bg_color ?>"><?= e($status) ?></a>
+            <?php endforeach; ?>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+            <?php if (count($my_commands) > 0): ?>
+                <?php foreach ($my_commands as $command):
+                    $actions_html = '';
+                    if ($command['status'] === 'Declined') { $actions_html .= '<button class="edit-command-btn ..." data-command=\''.json_encode($command).'\'>Modify & Resend</button>'; }
+                    if ($command['status'] === 'Completed' || $command['status'] === 'Declined') { $actions_html .= '<form action="actions/command_action.php" ...><button ...>'.icon_x().'</button></form>'; }
+                    echo render_command_card($command, $user, $actions_html);
+                endforeach; ?>
+            <?php else: ?>
+                <p class="text-gray-500 col-span-full text-center py-10">No commands match the current filter.</p>
+            <?php endif; ?>
+        </div>
+        
+    <?php endif; ?>
 </div>
+
+
 
 <!-- =========== NEW: Command Create/Edit Modal is now part of the HTML =========== -->
 <div id="command-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden">

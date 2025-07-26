@@ -1,5 +1,5 @@
 <?php
-// index.php (Definitive Version)
+// index.php (Definitive, Corrected Version)
 
 require_once 'includes/functions.php';
 require_login();
@@ -8,27 +8,50 @@ $user = get_user();
 $role = $user['role'];
 $view = $_GET['view'] ?? 'dashboard';
 
-// ** THIS IS THE CRITICAL LOGIC **
-// If the view is NOT the profile page, we include the standard header.
-if ($view !== 'profile') {
-    include 'includes/header.php';
-}
-
-// Now we route to the correct content file.
+// This is a special case ONLY for the profile page, which has a unique full-screen design.
 if ($view === 'profile') {
-    // The profile.php file will now be responsible for its own complete HTML structure.
     include 'dashboards/profile.php';
-} else {
-    // For all other views, we load the user's main dashboard file.
-    $productionRoles = ['Producer', 'Dryer', 'Cooker', 'Presser', 'Packer'];
-    if ($role === 'Admin') include 'dashboards/admin.php';
-    elseif ($role === 'Commercial') include 'dashboards/commercial.php';
-    elseif ($role === 'Chef') include 'dashboards/chef.php';
-    elseif (in_array($role, $productionRoles)) include 'dashboards/production.php';
-    else echo '<p>No dashboard defined.</p>';
+    // The script stops here because profile.php is a complete HTML page.
+    exit();
 }
 
-// If the view is NOT the profile page, we include the standard footer.
-if ($view !== 'profile') {
-    include 'includes/footer.php';
+// For ALL other pages (including our settings page), we load the standard layout.
+include 'includes/header.php';
+
+// This is our main router for all content that goes inside the standard layout.
+switch ($view) {
+    case 'settings':
+        // The settings page is now correctly loaded here, inside the main layout.
+        include 'dashboards/settings.php';
+        break;
+
+    case 'users':
+        if ($role === 'Admin') {
+            include 'dashboards/admin.php'; // The admin file handles its own 'users' view.
+        } else {
+            // A non-admin trying to access this is safely sent back to their dashboard.
+            header('Location: index.php');
+            exit();
+        }
+        break;
+
+    case 'history':
+        // This logic correctly sends each role to their respective dashboard file to handle the history view.
+        if ($role === 'Admin') include 'dashboards/admin.php';
+        elseif ($role === 'Commercial') include 'dashboards/commercial.php';
+        elseif ($role === 'Chef') include 'dashboards/chef.php';
+        elseif (in_array($role, ['Producer', 'Dryer', 'Cooker', 'Presser', 'Packer'])) include 'dashboards/production.php';
+        break;
+    
+    default: // This is for 'dashboard' or any other value
+        $productionRoles = ['Producer', 'Dryer', 'Cooker', 'Presser', 'Packer'];
+        if ($role === 'Admin') include 'dashboards/admin.php';
+        elseif ($role === 'Commercial') include 'dashboards/commercial.php';
+        elseif ($role === 'Chef') include 'dashboards/chef.php';
+        elseif (in_array($role, $productionRoles)) include 'dashboards/production.php';
+        else echo '<p>No dashboard defined.</p>';
+        break;
 }
+
+// Finally, we include the footer to complete the page.
+include 'includes/footer.php';

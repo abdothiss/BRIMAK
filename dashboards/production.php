@@ -1,39 +1,81 @@
 <?php
-// Included from index.php
+// dashboards/production.php (Definitive, Corrected Version)
 require_once 'includes/template_parts.php';
 $user = get_user();
+$current_view = $_GET['view'] ?? 'dashboard';
 
-// --- Data for BOTH tabs ---
-// 1. Fetch active tasks for this worker
-$stmt = $conn->prepare("SELECT * FROM commands WHERE status = 'InProgress' AND current_step = ? AND type = ? ORDER BY created_at ASC");
-$stmt->bind_param("ss", $user['role'], $user['section']);
-$stmt->execute();
-$my_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+if ($current_view === 'history') {
+    // ** Worker-Specific History View **
+    // Get search term
+    $search_term = $_GET['search'] ?? '';
+    
+    // Build the worker-specific history query with search functionality
+    $history_sql = "SELECT DISTINCT c.* FROM commands c JOIN command_history ch ON c.id = ch.command_id WHERE ch.completed_by_id = ?";
+    $params = [$user['id']];
+    $types = 'i';
 
-// 2. Fetch all finished commands for history
-$history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived') ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
-?>
-
-<div class="space-y-6">
-    <h2 class="text-3xl font-bold text-gray-800"><?= e($user['role']) ?> Dashboard</h2>
-
-    <!-- TABS -->
-    <div class="border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="#" id="tab-tasks" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-brick-red text-brick-red">Current Tasks</a>
-            <a href="#" id="tab-history" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Command History</a>
-        </nav>
+    if (!empty($search_term)) {
+        $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
+        // Workers can only search by Command ID
+        $history_sql .= " AND c.command_uid LIKE ?";
+        $params[] = $safe_search;
+        $types .= 's';
+    }
+    $history_sql .= " ORDER BY ch.completed_at DESC";
+    
+    $stmt = $conn->prepare($history_sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $history_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <h2 class="text-3xl font-extrabold text-gray-800">Your Personal Command History</h2>
+    
+    <!-- ** NEW SEARCH & DELETE ALL SECTION ** -->
+    <div class="bg-white p-4 rounded-lg shadow-sm my-6">
+        <form action="index.php" method="GET" class="search-container">
+            <input type="hidden" name="view" value="history">
+            <input type="text" name="search" class="search-input" placeholder="Search by Command ID..." value="<?= e($search_term) ?>">
+            <button type="submit" class="search-button">
+                <?= icon_search('w-5 h-5') ?>
+            </button>
+        </form>
+        <?php if (count($history_commands) > 0): ?>
+        <div class="border-t mt-4 pt-4">
+            <button id="open-delete-all-modal-btn" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                Delete All My History
+            </button>
+        </div>
+        <?php endif; ?>
     </div>
 
-    <!-- Current Tasks Content -->
-    <div id="content-tasks" class="tab-content">
-        <p class="text-lg text-gray-600 pt-4">You have <?= count($my_commands) ?> task(s) to complete.</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+    <!-- History Drawer List -->
+    <div class="space-y-2">
+        <?php if(count($history_commands) > 0): ?>
+            <?php foreach ($history_commands as $command):
+                $status_text = $command['status'];
+                echo render_history_drawer($command, $user, $status_text);
+            endforeach; ?>
+        <?php else: ?>
+            <p class="text-center py-10 bg-white rounded-lg shadow-sm">You have no commands in your history yet.</p>
+        <?php endif; ?>
+    </div>
+    <?php
+} else {
+    // ** Default "Current Tasks" View **
+    $stmt = $conn->prepare("SELECT * FROM commands WHERE status = 'InProgress' AND current_step = ? AND type = ? ORDER BY created_at ASC");
+    $stmt->bind_param("ss", $user['role'], $user['section']);
+    $stmt->execute();
+    $my_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <div class="space-y-6">
+        <h2 class="text-3xl font-bold text-gray-800"><?= e($user['role']) ?> Dashboard</h2>
+        <p class="text-lg text-gray-600">You have <?= count($my_commands) ?> task(s) to complete.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <?php if (count($my_commands) > 0): ?>
                 <?php foreach ($my_commands as $command):
                     //
                     // ** THIS IS THE CRITICAL FIX **
-                    // The ... has been replaced with the full, working form.
+                    // The "..." has been replaced with the full, unabbreviated HTML form.
                     //
                     $actions_html = '<form action="actions/command_action.php" method="POST" class="w-full">
                                         <input type="hidden" name="command_id" value="'.e($command['id']).'">
@@ -46,21 +88,10 @@ $history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Compl
                     echo render_command_card($command, $user, $actions_html);
                 endforeach; ?>
             <?php else: ?>
-                <div class="col-span-full text-center bg-white p-10 rounded-lg shadow-md">
-                    <p class="text-gray-500 text-xl">No pending tasks at the moment. Great job!</p>
-                </div>
+                <div class="col-span-full text-center bg-white p-10 rounded-lg shadow-md"><p class="text-gray-500 text-xl">No pending tasks at the moment. Great job!</p></div>
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- History Content (Unchanged) -->
-    <div id="content-history" class="tab-content hidden">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <?php if (count($history_commands) > 0): ?>
-                <?php foreach ($history_commands as $command): echo render_command_card($command, $user, ''); endforeach; ?>
-            <?php else: ?>
-                <p class="text-gray-500 col-span-full text-center py-10">No command history found.</p>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
+    <?php
+}
+?>

@@ -1,39 +1,80 @@
 <?php
-// Included from index.php
+// dashboards/chef.php (Definitive, Corrected Version)
 require_once 'includes/template_parts.php';
 $user = get_user();
+$current_view = $_GET['view'] ?? 'dashboard';
 
-// --- Data for BOTH tabs ---
-// 1. Fetch commands for this chef's section awaiting approval
-$stmt = $conn->prepare("SELECT * FROM commands WHERE type = ? AND status = 'PendingApproval' ORDER BY created_at ASC");
-$stmt->bind_param("s", $user['section']);
-$stmt->execute();
-$my_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// 2. Fetch all finished commands for history
-$history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived') ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
-?>
-
-<div class="space-y-6">
-    <h2 class="text-3xl font-bold text-gray-800">Chef Dashboard - Section <?= e($user['section']) ?></h2>
+if ($current_view === 'history') {
+    // Get search term
+    $search_term = $_GET['search'] ?? '';
     
-    <!-- TABS -->
-    <div class="border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <a href="#" id="tab-approval" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-brick-red text-brick-red">Pending Approval</a>
-            <a href="#" id="tab-history" class="tab-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Command History</a>
-        </nav>
+    // Build the worker-specific history query with search functionality
+    $history_sql = "SELECT DISTINCT c.* FROM commands c JOIN command_history ch ON c.id = ch.command_id WHERE ch.completed_by_id = ?";
+    $params = [$user['id']];
+    $types = 'i';
+
+    if (!empty($search_term)) {
+        $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
+        // Workers can only search by Command ID
+        $history_sql .= " AND c.command_uid LIKE ?";
+        $params[] = $safe_search;
+        $types .= 's';
+    }
+    $history_sql .= " ORDER BY ch.completed_at DESC";
+    
+    $stmt = $conn->prepare($history_sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $history_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <h2 class="text-3xl font-extrabold text-gray-800">Your Personal Command History</h2>
+    
+    <!-- ** NEW SEARCH & DELETE ALL SECTION ** -->
+    <div class="bg-white p-4 rounded-lg shadow-sm my-6">
+        <form action="index.php" method="GET" class="search-container">
+            <input type="hidden" name="view" value="history">
+            <input type="text" name="search" class="search-input" placeholder="Search by Command ID..." value="<?= e($search_term) ?>">
+            <button type="submit" class="search-button">
+                <?= icon_search('w-5 h-5') ?>
+            </button>
+        </form>
+        <?php if (count($history_commands) > 0): ?>
+        <div class="border-t mt-4 pt-4">
+            <button id="open-delete-all-modal-btn" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                Delete All My History
+            </button>
+        </div>
+        <?php endif; ?>
     </div>
 
-    <!-- Pending Approval Content -->
-    <div id="content-approval" class="tab-content">
-        <p class="text-lg text-gray-600 pt-4">You have <?= count($my_commands) ?> new command(s) awaiting approval.</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+    <!-- History Drawer List -->
+    <div class="space-y-2">
+        <?php if(count($history_commands) > 0): ?>
+            <?php foreach ($history_commands as $command):
+                $status_text = $command['status'];
+                echo render_history_drawer($command, $user, $status_text);
+            endforeach; ?>
+        <?php else: ?>
+            <p class="text-center py-10 bg-white rounded-lg shadow-sm">You have no commands in your history yet.</p>
+        <?php endif; ?>
+    </div>
+    <?php
+} else {
+    // ** Default "Pending Approval" View **
+    $stmt = $conn->prepare("SELECT * FROM commands WHERE type = ? AND status = 'PendingApproval' ORDER BY created_at ASC");
+    $stmt->bind_param("s", $user['section']);
+    $stmt->execute();
+    $my_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <div class="space-y-6">
+        <h2 class="text-3xl font-bold text-gray-800">Chef Dashboard - Section <?= e($user['section']) ?></h2>
+        <p class="text-lg text-gray-600">You have <?= count($my_commands) ?> new command(s) awaiting approval.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <?php if (count($my_commands) > 0): ?>
                 <?php foreach ($my_commands as $command):
                     //
                     // ** THIS IS THE CRITICAL FIX **
-                    // The ... has been replaced with the full, working buttons.
+                    // The "..." has been replaced with the full, unabbreviated HTML for both buttons.
                     //
                     $actions_html = '<div class="w-full flex justify-around items-center">
                                       <button class="open-decline-modal flex items-center space-x-2 px-4 py-2 text-lg font-bold rounded-lg text-white bg-danger-red hover:bg-red-700" data-command-id="'.e($command['id']).'" data-command-uid="'.e($command['command_uid']).'">
@@ -50,43 +91,24 @@ $history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Compl
                     echo render_command_card($command, $user, $actions_html);
                 endforeach; ?>
             <?php else: ?>
-                <p class="text-gray-500 col-span-full text-center py-10">No new commands to review.</p>
+                <p class="text-gray-500 col-span-full text-center py-10 bg-white rounded-lg shadow-sm">No new commands to review.</p>
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- History Content -->
-    <div id="content-history" class="tab-content hidden">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-             <?php if (count($history_commands) > 0): ?>
-                <?php foreach ($history_commands as $command): echo render_command_card($command, $user, ''); endforeach; ?>
-            <?php else: ?>
-                <p class="text-gray-500 col-span-full text-center py-10">No command history found.</p>
-            <?php endif; ?>
+    <!-- The Decline Reason Modal (Unchanged and correct) -->
+    <div id="decline-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-4 border-b flex justify-between items-center"><h2 id="decline-modal-title" class="text-xl font-bold">Decline Command</h2><button class="close-decline-modal text-gray-500 hover:text-gray-800"><?= icon_x() ?></button></div>
+            <div class="p-6">
+                <form action="actions/command_action.php" method="POST" class="space-y-4">
+                    <input type="hidden" name="action" value="decline"><input type="hidden" name="command_id" id="decline-command-id" value="">
+                    <div><label for="declineReason" class="block text-sm font-medium">Reason for Declining</label><textarea id="declineReason" name="decline_reason" required rows="4" class="mt-1 block w-full border rounded-md p-2" placeholder="e.g., Wrong specs..."></textarea></div>
+                    <div class="flex justify-end space-x-3 pt-2"><button type="button" class="close-decline-modal px-4 py-2 bg-gray-200 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-danger-red text-white rounded-md">Decline Command</button></div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+    <?php
+}
+?>
 
-<!-- Decline Reason Modal (Unchanged) -->
-<div id="decline-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div class="flex justify-between items-center p-4 border-b">
-            <h2 id="decline-modal-title" class="text-xl font-bold text-gray-800">Decline Command</h2>
-            <button class="close-decline-modal text-gray-500 hover:text-gray-800"><?= icon_x() ?></button>
-        </div>
-        <div class="p-6">
-            <form action="actions/command_action.php" method="POST" class="space-y-4">
-                <input type="hidden" name="action" value="decline">
-                <input type="hidden" name="command_id" id="decline-command-id" value="">
-                <div>
-                    <label for="declineReason" class="block text-sm font-medium text-gray-700">Reason for Declining</label>
-                    <textarea id="declineReason" name="decline_reason" required rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brick-red focus:border-brick-red" placeholder="e.g., Wrong specs, exceeds machine limits"></textarea>
-                </div>
-                <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" class="close-decline-modal px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-danger-red text-white rounded-md hover:bg-red-800">Decline Command</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>

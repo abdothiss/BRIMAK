@@ -90,3 +90,69 @@ function render_command_card($command, $user, $actions_html = '') {
     <?php
     return ob_get_clean();
 }
+
+
+
+function render_history_drawer($command, $user, $display_status) {
+    $is_admin_or_commercial = in_array($user['role'], ['Admin', 'Commercial']);
+    
+    // New, simpler status colors
+    $status_colors = [
+        'Completed' => 'bg-green-100 text-green-800',
+        'Declined' => 'bg-red-100 text-red-800',
+    ];
+    // Use the display_status to get the color, fallback to gray
+    $status_class = $status_colors[$display_status] ?? 'bg-gray-100 text-gray-800';
+    
+    ob_start();
+    ?>
+    <div class="bg-white rounded-lg shadow-sm">
+        <!-- This is the clickable part of the drawer -->
+        <button class="history-toggle w-full p-4 text-left flex justify-between items-center" data-target="history-content-<?= e($command['id']) ?>">
+            <div class="flex-grow pr-4">
+                <p class="font-bold text-gray-800 truncate"><?= e($command['command_uid']) ?></p>
+                <?php if ($is_admin_or_commercial): ?>
+                    <p class="text-sm text-gray-500 truncate"><?= e($command['client_name']) ?> - <?= e($command['client_phone']) ?></p>
+                <?php else: ?>
+                    <p class="text-sm text-gray-500">Type: BREMAC <?= e($command['type']) ?></p>
+                <?php endif; ?>
+            </div>
+            <div class="flex items-center space-x-4 flex-shrink-0">
+                <!-- This now correctly shows "Completed" or "Declined" instead of "Archived" -->
+                <span class="px-2 py-1 text-xs font-semibold rounded-full <?= $status_class ?>"><?= e($display_status) ?></span>
+                <span class="text-gray-400 chevron-icon transform transition-transform"><?= icon_chevron_right('w-5 h-5') ?></span>
+            </div>
+        </button>
+
+        <!-- This is the hidden content that expands -->
+        <div id="history-content-<?= e($command['id']) ?>" class="hidden p-4 border-t border-gray-200">
+            <div class="text-sm text-gray-700 space-y-2">
+                <p><span class="text-gray-500">Type:</span> <span class="font-semibold"><?= 'BREMAC ' . e($command['type']) ?></span></p>
+                <p><span class="text-gray-500">Quantity:</span> <span class="font-semibold"><?= e($command['quantity'] ? number_format($command['quantity']) . ' bricks' : 'N/A') ?></span></p>
+                <p><span class="text-gray-500">Dimensions:</span> <span class="font-semibold"><?= e(!empty($command['dimensions']) ? $command['dimensions'] : 'N/A') ?></span></p>
+                <p><span class="text-gray-500">Delivery Date:</span> <span class="font-semibold"><?= e(date("d M Y", strtotime($command['delivery_date']))) ?></span></p>
+                <?php if ($is_admin_or_commercial): ?>
+                    <p><span class="text-gray-500">Client Name:</span> <span class="font-semibold"><?= e($command['client_name']) ?></span></p>
+                    <p><span class="text-gray-500">Client Phone:</span> <span class="font-semibold"><?= e($command['client_phone']) ?></span></p>
+                <?php endif; ?>
+                <?php if (!empty($command['additional_notes'])): ?>
+                    <div class="pt-2"><p class="font-semibold text-gray-800">Additional Notes:</p><p class="text-gray-600 break-words pt-1"><?= e($command['additional_notes']) ?></p></div>
+                <?php endif; ?>
+                <?php if ($command['status'] === 'Declined' && !empty($command['decline_reason'])): ?>
+                    <div class="pt-2"><p class="font-semibold text-red-800">Decline Reason:</p><p class="text-red-600 break-words pt-1"><?= e($command['decline_reason']) ?></p></div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="text-right mt-4">
+                <!-- ** THIS IS THE NEW DELETE BUTTON ** -->
+                <!-- It uses classes and data-attributes to work with our new custom modal -->
+                <button class="open-delete-one-modal-btn text-xs font-semibold text-red-600 hover:text-red-800" data-command-id="<?= e($command['id']) ?>" data-command-uid="<?= e($command['command_uid']) ?>">
+                    Delete
+                </button>
+            </div>
+            
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}

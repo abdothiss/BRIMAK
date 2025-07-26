@@ -64,16 +64,54 @@ $current_view = $_GET['view'] ?? 'dashboard';
 
     // ================== CASE 2: COMMAND HISTORY VIEW ==================
     case 'history':
-        $history_commands = $conn->query("SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived') ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+        // ================== NEW, CORRECT COMMAND HISTORY VIEW ==================
+       $search_term = $_GET['search'] ?? '';
+        $history_sql = "SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived')";
+        if (!empty($search_term)) {
+            $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
+            $history_sql .= " AND (command_uid LIKE '$safe_search' OR client_name LIKE '$safe_search' OR client_phone LIKE '$safe_search')";
+        }
+        $history_sql .= " ORDER BY created_at DESC";
+        $history_commands = $conn->query($history_sql)->fetch_all(MYSQLI_ASSOC);
         ?>
         <h2 class="text-3xl font-extrabold text-gray-800">Command History</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-6">
-            <?php if (count($history_commands) > 0): ?>
-                <?php foreach ($history_commands as $command):
-                    echo render_command_card($command, $user, '');
+        
+        <!-- ** NEW SEARCH & DELETE ALL SECTION ** -->
+        <div class="bg-white p-4 rounded-lg shadow-sm my-6">
+            <form action="index.php" method="GET" class="search-container">
+                <input type="hidden" name="view" value="history">
+                <input type="text" name="search" class="search-input" placeholder="Search..." value="<?= e($search_term) ?>">
+                <button type="submit" class="search-button">
+                    <?= icon_search('w-5 h-5') // You'll need to create this icon ?>
+                </button>
+            </form>
+            <?php if ($user['role'] === 'Admin' && count($history_commands) > 0): ?>
+            <div class="border-t mt-4 pt-4">
+                <button id="open-delete-all-modal-btn" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                    Delete All History
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- History Drawer List -->
+        <div class="space-y-2">
+            <?php if(count($history_commands) > 0): ?>
+                <?php foreach ($history_commands as $command): 
+                    // ** THIS IS THE FIX for the status text **
+                    // We now pass the status text directly to the function
+                    $status_text = $command['status'];
+                    if ($status_text === 'Archived') {
+                        // We check the history to see if it was completed or declined before being archived
+                        $last_real_status_query = $conn->query("SELECT step_name FROM command_history WHERE command_id = " . (int)$command['id'] . " ORDER BY completed_at DESC LIMIT 1");
+                        // This is a simplified check. A more robust system would store the pre-archive status.
+                        // For now, we assume if it has history it was completed, otherwise declined.
+                        $status_text = ($last_real_status_query->num_rows > 0) ? 'Completed' : 'Declined';
+                    }
+                    echo render_history_drawer($command, $user, $status_text); 
                 endforeach; ?>
             <?php else: ?>
-                 <p class="text-gray-500 col-span-full text-center py-10 bg-white rounded-lg shadow-sm">No command history found.</p>
+                <p class="text-center py-10 bg-white rounded-lg shadow-sm">No command history found.</p>
             <?php endif; ?>
         </div>
         <?php

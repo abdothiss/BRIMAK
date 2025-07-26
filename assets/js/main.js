@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
+
     // ==========================================================
-    //  SECTION 1: Slide-Out Menu Logic (Works on all pages)
+    //  SECTION 1: Slide-Out Menu Logic
     // ==========================================================
     const menuBtn = document.getElementById('menu-btn');
     const menuPanel = document.getElementById('menu-panel');
@@ -16,30 +17,82 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     menuBtn?.addEventListener('click', toggleMenu);
     menuOverlay?.addEventListener('click', toggleMenu);
-
-    // ==========================================================
-    //  SECTION 2: Profile Page Modal Logic (NEW & CORRECT)
-    // ==========================================================
-    const openNameBtn = document.getElementById('open-name-modal-btn');
-    const openUsernameBtn = document.getElementById('open-username-modal-btn');
-    const openPasswordBtn = document.getElementById('open-password-modal-btn');
     
-    const nameModal = document.getElementById('change-name-modal');
-    const usernameModal = document.getElementById('change-username-modal');
-    const passwordModal = document.getElementById('change-password-modal');
-
-    openNameBtn?.addEventListener('click', () => nameModal?.classList.remove('hidden'));
-    openUsernameBtn?.addEventListener('click', () => usernameModal?.classList.remove('hidden'));
-    openPasswordBtn?.addEventListener('click', () => passwordModal?.classList.remove('hidden'));
-
-    // This query selector is more specific to avoid conflicts.
-    document.querySelectorAll('.modal .close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            nameModal?.classList.add('hidden');
-            usernameModal?.classList.add('hidden');
-            passwordModal?.classList.add('hidden');
+    // ==========================================================
+    // SECTION 2: NEW History Page Logic
+    // ==========================================================
+    // Logic to open/close history drawers
+    document.querySelectorAll('.history-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+            const content = document.getElementById(targetId);
+            const chevron = button.querySelector('.chevron-icon');
+            
+            content?.classList.toggle('hidden');
+            chevron?.classList.toggle('rotate-90');
         });
     });
+
+    // Logic for the custom "Delete All" confirmation modal
+    const deleteAllModal = document.getElementById('delete-all-modal');
+    document.getElementById('open-delete-all-modal-btn')?.addEventListener('click', () => {
+        deleteAllModal?.classList.remove('hidden');
+    });
+
+    // Logic for the custom "Delete One" confirmation modal
+    const deleteOneModal = document.getElementById('delete-one-modal');
+    if (deleteOneModal) {
+        document.querySelectorAll('.open-delete-one-modal-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('delete-one-id').value = btn.dataset.commandId;
+                document.getElementById('delete-one-uid').textContent = btn.dataset.commandUid;
+                deleteOneModal.classList.remove('hidden');
+            });
+        });
+    }
+
+    // Universal close button for the new history modals
+    document.querySelectorAll('.close-history-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            deleteOneModal?.classList.add('hidden');
+            deleteAllModal?.classList.add('hidden');
+        });
+    });
+
+    
+    // ==========================================================
+    //  SECTION 2: Logic for the NEW Settings Page
+    // ==========================================================
+    function setupEditToggle(editBtnId, displayId, formId) {
+        const editBtn = document.getElementById(editBtnId);
+        const displayEl = document.getElementById(displayId);
+        const formEl = document.getElementById(formId);
+        const cancelBtn = formEl?.querySelector('.cancel-btn');
+
+        editBtn?.addEventListener('click', () => {
+            displayEl?.classList.add('hidden');
+            formEl?.classList.remove('hidden');
+        });
+
+        cancelBtn?.addEventListener('click', () => {
+            displayEl?.classList.remove('hidden');
+            formEl?.classList.add('hidden');
+        });
+    }
+
+    setupEditToggle('edit-name-btn', 'display-name', 'form-name');
+    setupEditToggle('edit-username-btn', 'display-username', 'form-username');
+    setupEditToggle('edit-password-btn', 'display-password', 'form-password');
+
+    // --- Dark Mode Toggle (Non-functional, but interactive) ---
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', function() {
+            this.classList.toggle('bg-green-500'); // Toggles between gray and green
+            const circle = this.querySelector('div');
+            circle.classList.toggle('translate-x-6'); // Slides the circle
+        });
+    }
 
     // ==========================================================
     //  SECTION 2: Logic for Modals That Actually Exist
