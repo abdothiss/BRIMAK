@@ -9,16 +9,18 @@ if ($current_view === 'history') {
     // Get search term
     $search_term = $_GET['search'] ?? '';
     
-    // Build the worker-specific history query with search functionality
-    $history_sql = "SELECT DISTINCT c.* FROM commands c JOIN command_history ch ON c.id = ch.command_id WHERE ch.completed_by_id = ?";
-    $params = [$user['id']];
-    $types = 'i';
+    $history_sql = "
+        SELECT DISTINCT c.* FROM commands c
+        JOIN command_history ch ON c.id = ch.command_id
+        LEFT JOIN user_command_views ucv ON c.id = ucv.command_id AND ucv.user_id = ?
+        WHERE ch.completed_by_id = ? AND ucv.id IS NULL
+    ";
+    $params = [$user['id'], $user['id']];
+    $types = 'ii';
 
     if (!empty($search_term)) {
-        $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
-        // Workers can only search by Command ID
         $history_sql .= " AND c.command_uid LIKE ?";
-        $params[] = $safe_search;
+        $params[] = '%' . $search_term . '%';
         $types .= 's';
     }
     $history_sql .= " ORDER BY ch.completed_at DESC";
@@ -30,14 +32,12 @@ if ($current_view === 'history') {
     ?>
     <h2 class="text-3xl font-extrabold text-gray-800">Your Personal Command History</h2>
     
-    <!-- ** NEW SEARCH & DELETE ALL SECTION ** -->
+    <!-- Search Bar and Delete All Button -->
     <div class="bg-white p-4 rounded-lg shadow-sm my-6">
         <form action="index.php" method="GET" class="search-container">
             <input type="hidden" name="view" value="history">
             <input type="text" name="search" class="search-input" placeholder="Search by Command ID..." value="<?= e($search_term) ?>">
-            <button type="submit" class="search-button">
-                <?= icon_search('w-5 h-5') ?>
-            </button>
+            <button type="submit" class="search-button"><?= icon_search('w-5 h-5') ?></button>
         </form>
         <?php if (count($history_commands) > 0): ?>
         <div class="border-t mt-4 pt-4">
@@ -52,8 +52,7 @@ if ($current_view === 'history') {
     <div class="space-y-2">
         <?php if(count($history_commands) > 0): ?>
             <?php foreach ($history_commands as $command):
-                $status_text = $command['status'];
-                echo render_history_drawer($command, $user, $status_text);
+                echo render_history_drawer($command, $user, $command['status']);
             endforeach; ?>
         <?php else: ?>
             <p class="text-center py-10 bg-white rounded-lg shadow-sm">You have no commands in your history yet.</p>

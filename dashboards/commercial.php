@@ -10,96 +10,134 @@ $current_view = $_GET['view'] ?? 'dashboard';
 <div class="space-y-6">
 
     <?php if ($current_view === 'history'): ?>
+       <?php 
         
-        <!-- ================== NEW, REDESIGNED COMMAND HISTORY VIEW ================== -->
-        <?php
         $search_term = $_GET['search'] ?? '';
-        $history_sql = "SELECT * FROM commands WHERE status IN ('Completed', 'Declined', 'Archived')";
-        if (!empty($search_term)) {
-            $safe_search = '%' . $conn->real_escape_string($search_term) . '%';
-            $history_sql .= " AND (command_uid LIKE '$safe_search' OR client_name LIKE '$safe_search' OR client_phone LIKE '$safe_search')";
-        }
-        $history_sql .= " ORDER BY created_at DESC";
-        $history_commands = $conn->query($history_sql)->fetch_all(MYSQLI_ASSOC);
-        ?>
-        <h2 class="text-3xl font-extrabold text-gray-800">Command History</h2>
-        
-        <!-- New Search Bar -->
-        <div class="bg-white p-4 rounded-lg shadow-sm my-6">
-            <form action="index.php" method="GET" class="search-container">
-                <input type="hidden" name="view" value="history">
-                <input type="text" name="search" class="search-input" placeholder="Search by ID, Client Name, or Phone..." value="<?= e($search_term) ?>">
-                <button type="submit" class="search-button">
-                    <?= icon_search('w-5 h-5') ?>
-                </button>
-            </form>
-            <?php // Note: The "Delete All" button does NOT appear for Commercial, only for Admin ?>
-        </div>
+    
+    // This query fetches ALL finished commands that the CURRENT Commercial user has NOT personally hidden.
+    $history_sql = "
+        SELECT c.* FROM commands c
+        LEFT JOIN user_command_views ucv ON c.id = ucv.command_id AND ucv.user_id = ?
+        WHERE c.status IN ('Completed', 'Declined') AND ucv.id IS NULL
+    ";
+    $params = [$user['id']];
+    $types = 'i';
 
-        <!-- History Drawer List -->
-        <div class="space-y-2">
-            <?php if(count($history_commands) > 0): ?>
-                <?php foreach ($history_commands as $command):
-                    // Logic to determine the correct display status
-                    $status_text = $command['status'];
-                    if ($status_text === 'Archived') {
-                        $last_real_status_query = $conn->query("SELECT step_name FROM command_history WHERE command_id = " . (int)$command['id'] . " ORDER BY completed_at DESC LIMIT 1");
-                        $status_text = ($last_real_status_query->num_rows > 0) ? 'Completed' : 'Declined';
-                    }
-                    echo render_history_drawer($command, $user, $status_text);
-                endforeach; ?>
-            <?php else: ?>
-                <p class="text-center py-10 bg-white rounded-lg shadow-sm">No command history found.</p>
-            <?php endif; ?>
+    if (!empty($search_term)) {
+        $safe_search = '%' . $search_term . '%';
+        $history_sql .= " AND (c.command_uid LIKE ? OR c.client_name LIKE ? OR c.client_phone LIKE ?)";
+        $params = array_merge($params, [$safe_search, $safe_search, $safe_search]);
+        $types .= 'sss';
+    }
+    $history_sql .= " ORDER BY c.created_at DESC";
+    
+    $stmt = $conn->prepare($history_sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $history_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <h2 class="text-3xl font-extrabold text-gray-800">Command History</h2>
+    
+    <!-- Search Bar and Delete All Button -->
+    <div class="bg-white p-4 rounded-lg shadow-sm my-6">
+        <form action="index.php" method="GET" class="search-container">
+            <input type="hidden" name="view" value="history">
+            <input type="text" name="search" class="search-input" placeholder="Search by ID, Client Name, or Phone..." value="<?= e($search_term) ?>">
+            <button type="submit" class="search-button"><?= icon_search('w-5 h-5') ?></button>
+        </form>
+        <?php if (count($history_commands) > 0): ?>
+        <div class="border-t mt-4 pt-4">
+            <button id="open-delete-all-modal-btn" class="text-sm font-semibold text-red-600 hover:text-red-800">
+                Delete All My History
+            </button>
         </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- History Drawer List -->
+    <div class="space-y-2">
+        <?php if(count($history_commands) > 0): ?>
+            <?php foreach ($history_commands as $command): 
+                echo render_history_drawer($command, $user, $command['status']); 
+            endforeach; ?>
+        <?php else: ?>
+            <p class="text-center py-10 bg-white rounded-lg shadow-sm">No command history found.</p>
+        <?php endif; ?>
+    </div>
+    
+     
+    
 
     <?php else: // This is the default 'dashboard' view ?>
 
         <!-- ================== LIVE COMMANDS VIEW ================== -->
         <?php
-        $filter_status = $_GET['filter_status'] ?? 'All';
-        // Build the SQL WHERE clause based on the filter, ensuring it doesn't show archived commands
-        $where_conditions = ["c.status != 'Archived'"];
-        if ($filter_status !== 'All' && in_array($filter_status, ALL_STATUSES)) {
-            $where_conditions[] = "c.status = '" . $conn->real_escape_string($filter_status) . "'";
-        }
-        $sql_where = "WHERE " . implode(' AND ', $where_conditions);
-        $commands_sql = "SELECT c.*, (SELECT COUNT(*) FROM command_history ch WHERE ch.command_id = c.id) as history_count FROM commands c $sql_where ORDER BY c.created_at DESC";
-        $my_commands = $conn->query($commands_sql)->fetch_all(MYSQLI_ASSOC);
-        ?>
+        // ================== LIVE COMMANDS VIEW (THIS IS THE FIX) ==================
+    $filter_client_name = $_GET['filter_client_name'] ?? '';
+    $filter_status = $_GET['filter_status'] ?? 'All';
+    
+    $live_sql = "
+        SELECT c.*, (SELECT COUNT(*) FROM command_history ch WHERE ch.command_id = c.id) as history_count
+        FROM commands c LEFT JOIN user_command_views ucv ON c.id = ucv.command_id AND ucv.user_id = ? WHERE ucv.id IS NULL
+    ";
+    $params = [$user['id']]; $types = 'i';
+
+    if ($filter_status !== 'All') {
+    $live_sql .= " AND c.status = ?";
+    $params[] = $filter_status;
+    $types .= 's';
+    }
+    
+    $live_sql .= " ORDER BY c.created_at DESC";
+    
+    $stmt = $conn->prepare($live_sql); $stmt->bind_param($types, ...$params); $stmt->execute();
+    $my_commands = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    <div class="space-y-6">
         <div class="flex justify-between items-center">
             <h2 class="text-3xl font-bold text-gray-800">Live Commands</h2>
-            <button id="open-create-modal-btn" class="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-brick-red text-white font-semibold rounded-lg shadow-md hover:bg-red-800 transition-colors">
-                <?= icon_plus('w-6 h-6') ?> <span>Create New Command</span>
-            </button>
+            <button id="open-create-modal-btn" class="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-brick-red text-white font-semibold rounded-lg shadow-md hover:bg-red-800 transition-colors"><?= icon_plus('w-6 h-6') ?> <span>Create New Command</span></button>
         </div>
-        <div class="flex flex-wrap gap-2 pt-4">
-            <?php
-            $statuses_to_show = array_merge(['All'], ALL_STATUSES);
-            foreach ($statuses_to_show as $status):
-                if ($status === 'Archived') continue;
-                $is_active = ($filter_status === $status);
-                $bg_color = $is_active ? 'bg-brick-red text-white' : 'bg-white text-gray-700 hover:bg-gray-200 border';
-                $link = "index.php?view=dashboard&filter_status=" . e($status);
-            ?>
-                <a href="<?= $link ?>" class="px-3 py-1 text-sm font-medium rounded-full shadow-sm <?= $bg_color ?>"><?= e($status) ?></a>
-            <?php endforeach; ?>
+        <div class="bg-white p-4 rounded-lg shadow-sm space-y-4">
+            <!-- ** FIX 2: The Search Bar is added ** -->
+            <form action="index.php" method="GET" class="search-container">
+                <input type="hidden" name="view" value="dashboard">
+                <input type="hidden" name="filter_status" value="<?= e($filter_status) ?>">
+                <input type="text" name="filter_client_name" class="search-input" placeholder="Search by client name..." value="<?= e($filter_client_name) ?>">
+                <button type="submit" class="search-button"><?= icon_search('w-5 h-5') ?></button>
+            </form>
+            <div>
+                <div class="border-t border-gray-200 my-4"></div>
+                <div class="flex flex-wrap gap-2">
+                    <?php
+                    $statuses_to_show = array_merge(['All'], ALL_STATUSES);
+                    foreach ($statuses_to_show as $status):
+                        // ** FIX 3: "Paused" and "Archived" buttons are now hidden **
+                        if ($status === 'Archived' || $status === 'Paused') continue;
+                        $is_active = ($filter_status === $status);
+                        $bg_color = $is_active ? 'bg-brick-red text-white' : 'bg-white text-gray-700 hover:bg-gray-200 border';
+                        $link = "index.php?view=dashboard&filter_status=" . e($status);
+                    ?>
+                        <a href="<?= $link ?>" class="px-3 py-1 text-sm font-medium rounded-full shadow-sm <?= $bg_color ?>"><?= e($status) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <?php if (count($my_commands) > 0): ?>
                 <?php foreach ($my_commands as $command):
                     $actions_html = '';
-                    if ($command['status'] === 'Declined') { $actions_html .= '<button class="edit-command-btn ..." data-command=\''.json_encode($command).'\'>Modify & Resend</button>'; }
-                    if ($command['status'] === 'Completed' || $command['status'] === 'Declined') { $actions_html .= '<form action="actions/command_action.php" ...><button ...>'.icon_x().'</button></form>'; }
+                    if ($command['status'] === 'Completed' || $command['status'] === 'Declined') { $actions_html .= '<form action="actions/command_action.php" method="POST" class="inline-block"><input type="hidden" name="view" value="dashboard"><input type="hidden" name="command_id" value="'.e($command['id']).'"><button type="submit" name="action" value="archive" class="p-2 text-gray-400 hover:text-red-600">'.icon_x('w-5 h-5').'</button></form>'; }
                     echo render_command_card($command, $user, $actions_html);
                 endforeach; ?>
             <?php else: ?>
                 <p class="text-gray-500 col-span-full text-center py-10">No commands match the current filter.</p>
             <?php endif; ?>
         </div>
-        
-    <?php endif; ?>
+     <?php endif; ?>
 </div>
+
+    
 
 
 

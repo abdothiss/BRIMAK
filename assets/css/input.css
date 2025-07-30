@@ -45,6 +45,9 @@ body.login-page-body {
     background-position: center;     /* Centers the image */
     background-repeat: no-repeat;    /* Prevents tiling */
 }
+    body.login-page-body {
+    background-position: top center; /* or center center */
+}
 }
 
 /* Your desktop form styles */
@@ -110,4 +113,5 @@ body.login-page-body {
 .search-button:hover {
     background-color: #dc2626; /* red-600 */
 }
+
 

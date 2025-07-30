@@ -760,10 +760,6 @@ video {
   display: inline-flex;
 }
 
-.table {
-  display: table;
-}
-
 .grid {
   display: grid;
 }
@@ -1768,6 +1764,11 @@ body.login-page-body {
     background-repeat: no-repeat;
     /* Prevents tiling */
   }
+
+  body.login-page-body {
+    background-position: top center;
+    /* or center center */
+  }
 }
 
 /* Your desktop form styles */
@@ -2093,4 +2094,5 @@ body.login-page-body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
 

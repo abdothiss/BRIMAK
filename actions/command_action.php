@@ -98,56 +98,34 @@ if ($action === 'complete_task' && $command_id) {
     }
 }
 
-// --- NEW: ARCHIVE A COMMAND ---
 if ($action === 'archive' && $command_id) {
-    // Security: Only Admin and Commercial can archive
     if (in_array($user['role'], ['Admin', 'Commercial'])) {
-        $stmt = $conn->prepare("UPDATE commands SET status = 'Archived' WHERE id = ? AND status IN ('Completed', 'Declined')");
-        $stmt->bind_param("i", $command_id);
+        // We simply create a record saying this user has dismissed this command.
+        $stmt = $conn->prepare("INSERT IGNORE INTO user_command_views (user_id, command_id) VALUES (?, ?)");
+        $stmt->bind_param("ii", $user['id'], $command_id);
         $stmt->execute();
     }
 }
 
-if ($action === 'archive' && $command_id) {
-    if (in_array($user['role'], ['Admin', 'Commercial'])) {
-        $stmt = $conn->prepare("UPDATE commands SET status = 'Archived' WHERE id = ? AND status IN ('Completed', 'Declined')");
-        $stmt->bind_param("i", $command_id);
-        $stmt->execute();
-    }
-}
-
-
-
-// --- NEW, EXPANDED DELETE LOGIC ---
+// --- "DELETES" (HIDES) ONE COMMAND FROM THE CURRENT USER'S HISTORY VIEW ---
 if ($action === 'delete_history' && $command_id) {
-    // Admins can delete any history record.
-    if ($user['role'] === 'Admin') {
-        $stmt = $conn->prepare("DELETE FROM commands WHERE id = ?");
-        $stmt->bind_param("i", $command_id);
-        $stmt->execute();
-    } else {
-        // Workers can only "delete" a history record they are part of.
-        // We will do a "soft delete" by just removing their record from the history table,
-        // which removes it from their view. The command itself remains for the admin.
-        $stmt = $conn->prepare("DELETE FROM command_history WHERE command_id = ? AND completed_by_id = ?");
-        $stmt->bind_param("ii", $command_id, $user['id']);
-        $stmt->execute();
-    }
+    $stmt = $conn->prepare("INSERT IGNORE INTO user_command_views (user_id, command_id) VALUES (?, ?)");
+    $stmt->bind_param("ii", $user['id'], $command_id);
+    $stmt->execute();
 }
-
-// --- NEW, EXPANDED DELETE ALL LOGIC ---
 if ($action === 'delete_all_history') {
-    // Admins delete all finished commands from the system.
-    if ($user['role'] === 'Admin') {
-        $conn->query("DELETE FROM commands WHERE status IN ('Completed', 'Declined', 'Archived')");
-    } else {
-        // Workers only delete their own history records, not the actual commands.
-        $stmt = $conn->prepare("DELETE FROM command_history WHERE completed_by_id = ?");
+    if (in_array($user['role'], ['Admin', 'Commercial'])) {
+        $stmt = $conn->prepare("INSERT IGNORE INTO user_command_views (user_id, command_id) SELECT ?, id FROM commands WHERE status IN ('Completed', 'Declined')");
         $stmt->bind_param("i", $user['id']);
         $stmt->execute();
+    } else {
+        $stmt = $conn->prepare("INSERT IGNORE INTO user_command_views (user_id, command_id) SELECT ?, command_id FROM command_history WHERE completed_by_id = ?");
+        $stmt->bind_param("ii", $user['id'], $user['id']);
+        $stmt->execute();
     }
 }
 
-// Redirect back to the dashboard after action
-header('Location: ../index.php');
-exit();
+// ** THIS IS THE REDIRECT FIX, PART 2 **
+// We now redirect to the correct view (e.g., index.php?view=history)
+header('Location: ../index.php?view=' . urlencode($redirect_view));
+exit();;

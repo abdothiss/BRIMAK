@@ -144,13 +144,15 @@ function render_history_drawer($command, $user, $display_status) {
             </div>
             
             <div class="text-right mt-4">
-                <!-- ** THIS IS THE NEW DELETE BUTTON ** -->
-                <!-- It uses classes and data-attributes to work with our new custom modal -->
-                <button class="open-delete-one-modal-btn text-xs font-semibold text-red-600 hover:text-red-800" data-command-id="<?= e($command['id']) ?>" data-command-uid="<?= e($command['command_uid']) ?>">
-                    Delete
-                </button>
+                <form action="actions/command_action.php" method="POST">
+                    <input type="hidden" name="command_id" value="<?= e($command['id']) ?>">
+                    <input type="hidden" name="action" value="delete_history">
+                    <input type="hidden" name="view" value="history"> <!-- This tells the backend where to redirect -->
+                    <button type="submit" class="text-xs font-semibold text-red-600 hover:text-red-800" onclick="return confirm('Are you sure you want to remove this command from your history?');">
+                        Delete from my History
+                    </button>
+                </form>
             </div>
-            
         </div>
     </div>
     <?php
