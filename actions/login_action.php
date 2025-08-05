@@ -26,6 +26,7 @@ if ($result->num_rows === 1) {
     $user = $result->fetch_assoc();
     if (password_verify($password, $user['password']) && $user['is_active']) {
         $_SESSION['user'] = $user;
+        $_SESSION['lang'] = $user['language'];
 
         if ($remember_me) {
             // This function lives in functions.php and is ready to be used.

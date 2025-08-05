@@ -1,7 +1,7 @@
 <?php
 require_once '../includes/functions.php';
 require_login();
-
+$redirect_view = $_POST['view'] ?? 'dashboard';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: ../index.php');
     exit();
@@ -19,27 +19,29 @@ if ($action === 'create' || $action === 'update') {
     }
     
     // Sanitize and validate inputs
-    $type = $_POST['type'];
-    $dimensions = $_POST['dimensions'];
-    $quantity = (int)$_POST['quantity'];
-    $delivery_date = $_POST['delivery_date'];
-    $client_name = $_POST['client_name'];
-    $client_phone = $_POST['client_phone'];
-    $additional_notes = $_POST['additional_notes'];
-    
-    $first_step = WORKFLOWS[$type][0];
+        $type = $_POST['type']; // This is still being sent, but you might want to remove it
+        $product_name = trim($_POST['product_name']);
+        $arrival_date = $_POST['arrival_date'];
+        $deadline_date = $_POST['deadline_date'];
+        $client_name = $_POST['client_name'];
+        $client_phone = $_POST['client_phone'];
+        $additional_notes = $_POST['additional_notes'];
 
-    if ($action === 'create') {
-        $command_uid = 'CMD' . time(); // Simple unique ID
-        $stmt = $conn->prepare("INSERT INTO commands (command_uid, type, dimensions, quantity, delivery_date, client_name, client_phone, additional_notes, status, current_step, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PendingApproval', ?, ?)");
-        $stmt->bind_param("sssisssssi", $command_uid, $type, $dimensions, $quantity, $delivery_date, $client_name, $client_phone, $additional_notes, $first_step, $user['id']);
-        $stmt->execute();
-    } elseif ($action === 'update' && $command_id) {
-        // This is for resubmitting a declined command
-        $stmt = $conn->prepare("UPDATE commands SET type=?, dimensions=?, quantity=?, delivery_date=?, client_name=?, client_phone=?, additional_notes=?, status='PendingApproval', current_step=?, decline_reason=NULL WHERE id=?");
-        $stmt->bind_param("ssisssssi", $type, $dimensions, $quantity, $delivery_date, $client_name, $client_phone, $additional_notes, $first_step, $command_id);
-        $stmt->execute();
-    }
+        $first_step = WORKFLOWS[$type][0];
+
+        if ($action === 'create') {
+            $command_uid = 'CMD' . time();
+            $stmt = $conn->prepare("INSERT INTO commands (command_uid, type, product_name, arrival_date, deadline_date, client_name, client_phone, additional_notes, status, current_step, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PendingApproval', ?, ?)");
+            $stmt->bind_param("sssssssssi", $command_uid, $type, $product_name, $arrival_date, $deadline_date, $client_name, $client_phone, $additional_notes, $first_step, $user['id']);
+            $stmt->execute();
+            
+        } elseif ($action === 'update' && $command_id) { // this is unsuseful for the moment, zid update lcommercial la bghitiha
+            // This is for resubmitting a declined command
+            $stmt = $conn->prepare("UPDATE commands SET type=?, product_name=?, arrival_date=?, deadline_date=?, client_name=?, client_phone=?, additional_notes=?, status='PendingApproval', current_step=?, decline_reason=NULL WHERE id=?");
+            $stmt->bind_param("ssssssssi", $type, $product_name, $arrival_date, $deadline_date, $client_name, $client_phone, $additional_notes, $first_step, $command_id);
+            $stmt->execute();
+            
+        }
 }
 
 // --- CHEF ACCEPT ---
@@ -121,6 +123,17 @@ if ($action === 'delete_all_history') {
     } else {
         $stmt = $conn->prepare("INSERT IGNORE INTO user_command_views (user_id, command_id) SELECT ?, command_id FROM command_history WHERE completed_by_id = ?");
         $stmt->bind_param("ii", $user['id'], $user['id']);
+        $stmt->execute();
+    }
+}
+
+if ($action === 'cancel_command' && $command_id) {
+    // Security: Only Admins and Commercials can cancel a command.
+    if (in_array($user['role'], ['Admin', 'Commercial'])) {
+        // This query sets the status to 'Cancelled' only if it's currently
+        // in a state that is eligible for cancellation.
+        $stmt = $conn->prepare("UPDATE commands SET status = 'Cancelled' WHERE id = ? AND status IN ('PendingApproval', 'InProgress', 'Paused')");
+        $stmt->bind_param("i", $command_id);
         $stmt->execute();
     }
 }

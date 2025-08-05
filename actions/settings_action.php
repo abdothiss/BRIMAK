@@ -1,5 +1,13 @@
+
 <?php
-// actions/settings_action.php (New File)
+// --- TEMPORARY DEBUGGING CODE ---
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+// --- END OF DEBUGGING CODE ---
+
+
+// actions/settings_action.php (Definitive, Corrected Version)
 require_once '../includes/functions.php';
 require_login();
 
@@ -7,18 +15,49 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: ../index.php'); e
 
 $user = get_user();
 $action = $_POST['action'] ?? null;
+$redirect_to = $_POST['redirect_to'] ?? 'dashboard';
+$redirect_url = '../index.php?view=' . urlencode($redirect_to);
+
+// ===================================================================
+//  ACTION: TOGGLE DARK MODE 
+// ===================================================================
+if ($action === 'toggle_dark_mode') {
+    $new_theme = $_POST['theme'] ?? 'light';
+    
+    if (in_array($new_theme, ['light', 'dark'])) {
+        // This query will now succeed because the 'theme' column exists.
+        $stmt = $conn->prepare("UPDATE users SET theme = ? WHERE id = ?");
+        $stmt->bind_param("si", $new_theme, $user['id']);
+        $stmt->execute();
+        
+        $_SESSION['user']['theme'] = $new_theme;
+        $_SESSION['user_theme'] = $new_theme;
+        
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'new_theme' => $new_theme]);
+        exit(); // Stop the script immediately after sending the JSON.
+    }
+}
+
+// ===================================================================
+//  This part is for the other form submissions.
+// ===================================================================
+$redirect_to = $_POST['redirect_to'] ?? 'dashboard';
+$redirect_url = '../index.php?view=' . urlencode($redirect_to);
 
 // --- ACTION: CHANGE FULL NAME ---
 if ($action === 'change_name') {
     $new_name = trim($_POST['new_name'] ?? '');
     if (empty($new_name)) {
-        $_SESSION['profile_error'] = 'Full name cannot be empty.';
+        // ** THE FIX: Use the dictionary key instead of the full sentence **
+        $_SESSION['profile_error'] = 'profile_error_name_empty';
     } else {
         $stmt = $conn->prepare("UPDATE users SET name = ? WHERE id = ?");
         $stmt->bind_param("si", $new_name, $user['id']);
         $stmt->execute();
-        $_SESSION['user']['name'] = $new_name; // Update session immediately
-        $_SESSION['profile_success'] = 'Full name successfully updated!';
+        $_SESSION['user']['name'] = $new_name;
+        // ** THE FIX: Use the dictionary key **
+        $_SESSION['profile_success'] = 'profile_success_name_updated';
     }
 }
 
@@ -26,19 +65,22 @@ if ($action === 'change_name') {
 if ($action === 'change_username') {
     $new_username = trim($_POST['new_username'] ?? '');
     if (empty($new_username)) {
-        $_SESSION['profile_error'] = 'New username cannot be empty.';
+        // ** THE FIX: Use the dictionary key **
+        $_SESSION['profile_error'] = 'profile_error_user_empty';
     } else {
         $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->bind_param("si", $new_username, $user['id']);
         $stmt->execute();
         if ($stmt->get_result()->num_rows > 0) {
-            $_SESSION['profile_error'] = 'That username is already taken.';
+            // ** THE FIX: Use the dictionary key **
+            $_SESSION['profile_error'] = 'profile_error_user_taken';
         } else {
             $stmt = $conn->prepare("UPDATE users SET username = ? WHERE id = ?");
             $stmt->bind_param("si", $new_username, $user['id']);
             $stmt->execute();
-            $_SESSION['user']['username'] = $new_username; // Update session immediately
-            $_SESSION['profile_success'] = 'Username successfully updated!';
+            $_SESSION['user']['username'] = $new_username;
+            // ** THE FIX: Use the dictionary key **
+            $_SESSION['profile_success'] = 'profile_success_user_updated';
         }
     }
 }
@@ -48,7 +90,8 @@ if ($action === 'change_password') {
     $current_password = $_POST['current_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
     if (empty($current_password) || empty($new_password)) {
-        $_SESSION['profile_error'] = 'Please fill in all password fields.';
+        // ** THE FIX: Use the dictionary key **
+        $_SESSION['profile_error'] = 'profile_error_pass_empty';
     } else {
         $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->bind_param("i", $user['id']);
@@ -59,13 +102,14 @@ if ($action === 'change_password') {
             $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
             $stmt->bind_param("si", $new_password_hash, $user['id']);
             $stmt->execute();
-            $_SESSION['profile_success'] = 'Password successfully updated!';
+            // ** THE FIX: Use the dictionary key **
+            $_SESSION['profile_success'] = 'profile_success_pass_updated';
         } else {
-            $_SESSION['profile_error'] = 'Your current password was incorrect.';
+            // ** THE FIX: Use the dictionary key **
+            $_SESSION['profile_error'] = 'profile_error_pass_incorrect';
         }
     }
 }
 
-// Redirect back to the settings page
-header('Location: ../index.php?view=settings');
+header("Location: " . $redirect_url);
 exit();

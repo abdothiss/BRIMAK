@@ -3,8 +3,51 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
 require_once 'db.php';
+// ==========================================================
+//  NEW, SMARTER LANGUAGE CONTROLLER
+// ==========================================================
+$available_langs = ['en', 'fr'];
+$default_lang = 'fr';
+
+// ** NEW PRIORITY: 1. Logged-in User's DB Preference **
+// If the user is logged in, their saved language is the highest priority.
+if (isset($_SESSION['user']['language'])) {
+    $lang_code = $_SESSION['user']['language'];
+} else {
+    // Fallback for non-logged-in users (like on the login page)
+    $lang_code = $_SESSION['lang'] ?? $default_lang;
+}
+
+// ** NEW PRIORITY: 2. URL Override **
+// A "?lang=fr" in the URL will always override the current choice for this session.
+if (isset($_GET['lang']) && in_array($_GET['lang'], $available_langs)) {
+    $lang_code = $_GET['lang'];
+    $_SESSION['lang'] = $lang_code; // Save for this session
+    // If the user is logged in, also update their database preference immediately
+    if (isset($_SESSION['user']['id'])) {
+        require_once 'db.php'; // Ensure DB is connected
+        $stmt = $conn->prepare("UPDATE users SET language = ? WHERE id = ?");
+        $stmt->bind_param("si", $lang_code, $_SESSION['user']['id']);
+        $stmt->execute();
+        // Update the session immediately so the user sees the change everywhere
+        $_SESSION['user']['language'] = $lang_code;
+    }
+}
+
+// 3. Load the correct language file.
+$lang_file = __DIR__ . '/../lang/' . $lang_code . '.php';
+$lang = file_exists($lang_file) ? require $lang_file : require __DIR__ . '/../lang/' . $default_lang . '.php';
+
+// 4. Create the translation function.
+function t($key) {
+    global $lang;
+    // Return the translation or the key itself in brackets as a fallback
+    return $lang[$key] ?? "[$key]"; 
+}
+
+
+
 
 if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
     // We have a cookie, but no session. Let's try to log the user in.
@@ -152,4 +195,29 @@ function icon_trash($class = 'w-6 h-6') {
 
 function icon_search($class = 'w-6 h-6') {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+}
+
+function icon_at_sign($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>';
+}
+
+function icon_language($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><path d="M5 8h14M12 20l3-3-3-3"></path><path d="M12 4l-3 3 3 3"></path><path d="M20 12H4"></path></svg>';
+}
+
+function icon_dots_vertical($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+}
+function icon_check_circle($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+}
+function icon_clock($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+}
+function icon_phone($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+}
+
+function icon_arrow_up($class = 'w-6 h-6') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'.$class.'"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
 }

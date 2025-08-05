@@ -3,7 +3,7 @@ require_once '../includes/functions.php';
 require_login();
 
 // Security Check: Only Admins can perform these actions
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || get_user()['role'] !== 'Admin') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !in_array(get_user()['role'], ['Admin', 'Commercial'])) {
     header('Location: ../index.php');
     exit();
 }

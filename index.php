@@ -26,14 +26,14 @@ switch ($view) {
         break;
 
     case 'users':
-        if ($role === 'Admin') {
-            include 'dashboards/admin.php'; // The admin file handles its own 'users' view.
-        } else {
-            // A non-admin trying to access this is safely sent back to their dashboard.
-            header('Location: index.php');
-            exit();
-        }
-        break;
+    if (in_array($role, ['Admin', 'Commercial'])) {
+        include 'dashboards/admin.php'; // The admin file handles its own 'users' view.
+    } else {
+        // Anyone else is safely sent back to their dashboard.
+        header('Location: index.php');
+        exit();
+    }
+    break;
 
     case 'history':
         // This logic correctly sends each role to their respective dashboard file to handle the history view.
